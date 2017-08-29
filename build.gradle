@@ -1,0 +1,133 @@
+buildscript {
+    repositories {
+        jcenter()
+        mavenCentral()
+        maven {
+            name = 'oss-sonatype-public'
+            url = 'https://oss.sonatype.org/content/repositories/public/'
+        }
+        maven {
+            name = 'forge'
+            url = 'http://files.minecraftforge.net/maven/'
+        }
+        maven {
+            name = 'sponge'
+            url = 'http://repo.spongepowered.org/maven'
+        }
+        maven {
+            name = 'gradle-plugins'
+            url = 'https://plugins.gradle.org/m2'
+        }
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.2-SNAPSHOT'
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.0'
+        classpath 'gradle.plugin.nl.javadude.gradle.plugins:license-gradle-plugin:0.14.0'
+        classpath 'org.spongepowered:mixingradle:0.4+'
+        classpath 'org.spongepowered:spongegradle:0.5.+'
+    }
+}
+apply plugin: 'java'
+// Plugins for IDE project generation
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+
+apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'org.spongepowered.gradle'
+apply plugin: 'org.spongepowered.plugin'
+apply plugin: 'org.spongepowered.mixin'
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'com.github.hierynomus.license'
+
+
+defaultTasks 'clean', 'licenseFormat', 'sortAccessTransformers', 'sortClassFields', 'build'
+
+version = modVersion
+group = modGroup
+archivesBaseName = modBaseName
+ext.api = project('MysticSpongeAPI')
+
+minecraft {
+    version = "${project.forgeVersion}"
+    mappings = 'stable_32'
+    useDepAts = true
+    makeObfSourceJar = false
+}
+
+// ForgeGradle 2 fails to apply transformer rules for classes it doesn't know of by default
+// We use the access transformer to make the catalogs in the API accessible
+deobfMcMCP { failOnAtError = false }
+deobfMcSRG { failOnAtError = false }
+
+repositories {
+    mavenCentral()
+    maven {
+        name 'Sonatype'
+        url 'https://oss.sonatype.org/content/repositories/snapshots/'
+    }
+    maven {
+        name 'Forge repo'
+        url 'http://files.minecraftforge.net/maven'
+    }
+    maven {
+        name 'Sponge maven repo'
+        url 'http://repo.spongepowered.org/maven'
+    }
+    ivy {
+        name 'Thaumcraft Dropbox'
+        url 'https://dl.dropboxusercontent.com/u/'
+        layout "pattern", {
+            artifact "[organization]/[artifact]-[revision]-[classifier].[ext]"
+        }
+
+    }
+}
+
+dependencies {
+    compile 'org.spongepowered:spongeapi:6.0.0'
+    compile 'org.spongepowered:mixin:0.6.15-SNAPSHOT'
+    compile 'org.spongepowered:spongeforge:1.11.2-2393-6.1.0-BETA-2592:dev'
+    compile project(':MysticSpongeAPI')
+}
+
+// License header formatting
+license {
+    ext {
+        name = project.name
+        organization = project.organization
+        url = project.url
+    }
+
+    header = file('LICENSE.txt')
+    include '**/*.java'
+    strictCheck = true
+    ignoreFailures = true
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+    }
+}
+
+processResources {
+    // Include LICENSE in final JAR
+    from 'LICENSE.txt'
+}
+
+
+processResources {
+    // this will ensure that this task is redone when the versions change.
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft.version
+
+    // replace stuff in mcmod.info, nothing else
+    from(sourceSets.main.resources.srcDirs) {
+        include "mcmod.info"
+
+        // replace version and mcversion
+        expand "version": project.version, "mcversion": project.minecraft.version
+    }
+
+    // copy everything else, thats not the mcmod.info
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "mcmod.info"
+    }
+}
